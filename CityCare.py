@@ -1,304 +1,460 @@
-import sys
-import random
+import sys, random, time
 from datetime import datetime
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout,
-    QFileDialog, QMessageBox, QTextEdit, QListWidget, QListWidgetItem, QTabWidget, QInputDialog, QLineEdit
+    QFileDialog, QMessageBox, QTextEdit, QListWidget, QListWidgetItem,
+    QTabWidget, QLineEdit, QFrame, QComboBox, QScrollArea, QDialog,
+    QFormLayout, QSpinBox, QInputDialog
 )
 from PyQt6.QtGui import QPixmap, QFont
 from PyQt6.QtCore import Qt, QTimer
 
-# ====== Demo Data ======
-history = []  # List of reports
+# ================= Demo Storage =================
+history = []
+profile_data = {"Name": "", "Surname": "", "Age": "", "Location": ""}
 
-# ====== Splash / Intro Screen ======
+# ================= Premium Styles =================
+BASE_STYLE = """
+QWidget {{
+    background-color: {bg};
+    font-family: Inter, Arial;
+    color: {fg};
+}}
+QLabel#Title {{
+    font-size: 34px;
+    font-weight: 700;
+}}
+QLabel#Subtitle {{
+    font-size: 14px;
+    color: {sub};
+}}
+QFrame#Card {{
+    background: {card_bg};
+    border-radius: 14px;
+    padding: 18px;
+}}
+QPushButton {{
+    background-color: {btn_bg};
+    color: {btn_fg};
+    border-radius: 10px;
+    padding: 10px 18px;
+    font-size: 14px;
+}}
+QPushButton:hover {{
+    background-color: {btn_hover};
+}}
+QPushButton#Secondary {{
+    background-color: {sec_bg};
+    color: {sec_fg};
+}}
+QLineEdit, QTextEdit, QComboBox {{
+    background: {input_bg};
+    border: 1px solid {input_border};
+    border-radius: 10px;
+    padding: 10px;
+}}
+QTabWidget::pane {{
+    border: none;
+}}
+QTabBar::tab {{
+    background: transparent;
+    padding: 10px 20px;
+    font-weight: 600;
+    color: {tab_inactive};
+}}
+QTabBar::tab:selected {{
+    color: {tab_active};
+    border-bottom: 3px solid {tab_active};
+}}
+QScrollBar:vertical {{
+    background: transparent;
+    width: 10px;
+    margin: 0px 0px 0px 0px;
+}}
+QScrollBar::handle:vertical {{
+    background: {scroll};
+    min-height: 30px;
+    border-radius: 5px;
+}}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+    height: 0;
+}}
+"""
+
+THEMES = {
+    "Night Pink": {
+        "bg": "#1a0f1a","fg": "#ffe6f0","sub": "#ffb3d9","card_bg": "#2d132d",
+        "btn_bg": "#ff66b3","btn_hover": "#e0559c","btn_fg": "white",
+        "sec_bg": "#3a1f3a","sec_fg": "#ffe6f0","input_bg": "#2d132d","input_border": "#ff66b3",
+        "tab_active": "#ff66b3","tab_inactive": "#ffb3d9","scroll": "#ff66b3"
+    },
+    "Blue Panther": {
+        "bg": "#0d1f2d","fg": "#cce7ff","sub": "#99cfff","card_bg": "#123447",
+        "btn_bg": "#3399ff","btn_hover": "#287acc","btn_fg": "white",
+        "sec_bg": "#1b3b5c","sec_fg": "#cce7ff","input_bg": "#123447","input_border": "#3399ff",
+        "tab_active": "#3399ff","tab_inactive": "#99cfff","scroll": "#3399ff"
+    },
+    "Cream White": {
+        "bg": "#f6f7fb","fg": "#1f2937","sub": "#6b7280","card_bg": "white",
+        "btn_bg": "#2563eb","btn_hover": "#1e40af","btn_fg": "white",
+        "sec_bg": "#e5e7eb","sec_fg": "#111827","input_bg": "#f9fafb","input_border": "#e5e7eb",
+        "tab_active": "#2563eb","tab_inactive": "#6b7280","scroll": "#2563eb"
+    }
+}
+
+current_theme = "Cream White"
+
+def apply_theme(widget, theme_name):
+    global current_theme
+    current_theme = theme_name
+    theme = THEMES[theme_name]
+    widget.setStyleSheet(BASE_STYLE.format(**theme))
+
+# ================= Splash =================
 class SplashScreen(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("CityCare")
-        self.setStyleSheet("background-color: #e38da5;")
-        self.showMaximized()  # <-- Open splash screen maximized
-
-        layout = QVBoxLayout()
+        self.setStyleSheet("background-color:#111827; color:white;")
+        self.showMaximized()
+        layout = QVBoxLayout(self)
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        # Title
-        self.title = QLabel("CityCare")
-        self.title.setFont(QFont('Arial', 40, QFont.Weight.Bold))
-        self.title.setStyleSheet("color:white;")
-        self.title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(self.title)
-
-        # Animated text
-        self.animated_text = QLabel("")
-        self.animated_text.setFont(QFont('Arial', 16))
-        self.animated_text.setStyleSheet("color: white;")
-        self.animated_text.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(self.animated_text)
-
-        # Developer text (hidden initially)
-        self.dev_text = QLabel("Developed by Riv")
-        self.dev_text.setFont(QFont('Arial', 12, QFont.Weight.Bold))
-        self.dev_text.setStyleSheet("color:white;")
-        self.dev_text.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.dev_text.hide()
-        layout.addWidget(self.dev_text)
-
-        self.setLayout(layout)
-
-        # Start simple timed animation
-        self.start_animation()
-
-    def start_animation(self):
-        QTimer.singleShot(1000, lambda: self.animated_text.setText("A smart civic platform for reporting and managing city issues."))
-        QTimer.singleShot(2500, self.show_dev_text)
-        QTimer.singleShot(6000, self.launch_main_app)
-
-    def show_dev_text(self):
-        self.dev_text.show()
-
-    def launch_main_app(self):
-        self.main_window = CityCareApp()
-        self.main_window.show()
+        title = QLabel("CityCare")
+        title.setFont(QFont("Inter", 40, QFont.Weight.Bold))
+        subtitle = QLabel("A smarter way to care for your city")
+        subtitle.setStyleSheet("color:#9ca3af; font-size:16px;")
+        layout.addWidget(title)
+        layout.addWidget(subtitle)
+        QTimer.singleShot(2500, self.launch)
+    def launch(self):
+        self.main = CityCareApp()
+        apply_theme(self.main, current_theme)
+        self.main.show()
         self.close()
 
-# ====== CityCare Main App ======
+# ================= Main App =================
 class CityCareApp(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("CityCare - Smart Issue Reporter (Demo)")
-        self.setStyleSheet("background-color: #f0f2f5;")
+        self.setWindowTitle("CityCare")
+        self.showMaximized()
         self.image_path = None
-
-        # Open main app maximized
-        self.showMaximized()  # <-- Main window opens maximized
-
-        # ----- Title & Quote -----
+        # Header
         title = QLabel("CityCare")
-        title.setFont(QFont('Arial', 30, QFont.Weight.Bold))
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        quote = QLabel("“We care for your city, just like you do!”")
-        quote.setFont(QFont('Arial', 14))
-        quote.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        quote.setStyleSheet("color: #555555;")
-
-        # ----- Tabs: Report / History / Help -----
+        title.setObjectName("Title")
+        subtitle = QLabel("Report civic issues quickly & transparently")
+        subtitle.setObjectName("Subtitle")
+        header = QVBoxLayout()
+        header.addWidget(title)
+        header.addWidget(subtitle)
+        # ⚙️ Settings Button
+        header_layout = QHBoxLayout()
+        header_layout.addLayout(header)
+        settings_btn = QPushButton("⚙️")
+        settings_btn.setFixedSize(36, 36)
+        settings_btn.setStyleSheet("font-size:18px;")
+        settings_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        settings_btn.clicked.connect(self.open_settings)
+        header_layout.addStretch()
+        header_layout.addWidget(settings_btn)
+        # Tabs
         self.tabs = QTabWidget()
-        self.tabs.setStyleSheet("QTabBar::tab { height: 30px; width: 140px; font-weight: bold; }")
         self.report_tab = QWidget()
         self.history_tab = QWidget()
         self.help_tab = QWidget()
-        self.tabs.addTab(self.report_tab, "📝 Report")
-        self.tabs.addTab(self.history_tab, "📜 History")
-        self.tabs.addTab(self.help_tab, "❓ Help")
-
-        # ----- Setup Tabs -----
+        self.tabs.addTab(self.report_tab, "Report Issue")
+        self.tabs.addTab(self.history_tab, "History")
+        self.tabs.addTab(self.help_tab, "Help")
         self.setup_report_tab()
         self.setup_history_tab()
         self.setup_help_tab()
+        main = QVBoxLayout(self)
+        main.setContentsMargins(40, 30, 40, 30)
+        main.setSpacing(25)
+        main.addLayout(header_layout)
+        main.addWidget(self.tabs)
+        apply_theme(self, current_theme)
 
-        # ----- Overall Layout -----
-        main_layout = QVBoxLayout()
-        main_layout.addWidget(title)
-        main_layout.addWidget(quote)
-        main_layout.addWidget(self.tabs)
-        self.setLayout(main_layout)
+    # ================= Settings =================
+    def open_settings(self):
+        dlg = QDialog(self)
+        dlg.setWindowTitle("⚙️ Settings")
+        settings_btn = QPushButton("⚙️")
+        layout = QVBoxLayout(dlg)
+        profile_btn = QPushButton("👤 Profile")
+        profile_btn.clicked.connect(self.open_profile)
+        layout.addWidget(profile_btn)
+        theme_btn = QPushButton("🎨 Theme Change")
+        theme_btn.clicked.connect(self.change_theme)
+        layout.addWidget(theme_btn)
+        logout_btn = QPushButton("🚪 Logout")
+        logout_btn.clicked.connect(lambda: QMessageBox.information(self, "Logout", "Logged out!"))
+        layout.addWidget(logout_btn)
+        dlg.exec()
 
-    # ====== Report Tab ======
+    # ================= Profile =================
+    def open_profile(self):
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Profile")
+        layout = QFormLayout(dlg)
+        name_input = QLineEdit(profile_data["Name"])
+        surname_input = QLineEdit(profile_data["Surname"])
+        age_input = QSpinBox()
+        age_input.setRange(1,120)
+        age_input.setValue(int(profile_data["Age"] or 18))
+        location_input = QLineEdit(profile_data["Location"])
+        layout.addRow("Name:",name_input)
+        layout.addRow("Surname:",surname_input)
+        layout.addRow("Age:",age_input)
+        layout.addRow("Location:",location_input)
+        save_btn = QPushButton("Save")
+        save_btn.clicked.connect(lambda: self.save_profile(name_input,surname_input,age_input,location_input,dlg))
+        layout.addRow(save_btn)
+        dlg.exec()
+    def save_profile(self,name,surname,age,location,dialog):
+        profile_data["Name"]=name.text()
+        profile_data["Surname"]=surname.text()
+        profile_data["Age"]=str(age.value())
+        profile_data["Location"]=location.text()
+        dialog.close()
+        QMessageBox.information(self,"Saved","Profile saved in session.")
+
+    # ================= Theme =================
+    def change_theme(self):
+        theme, ok = QInputDialog.getItem(self,"Select Theme","Theme:",THEMES.keys(),current=0,editable=False)
+        if ok and theme:
+            apply_theme(self,theme)
+
+    # ================= Report Tab =================
     def setup_report_tab(self):
-        layout = QVBoxLayout()
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(15)
-
-        # Image Preview
-        self.image_label = QLabel("No image selected")
-        self.image_label.setFixedSize(500, 250)
+        scroll=QScrollArea()
+        scroll.setWidgetResizable(True)
+        card_container=QWidget()
+        scroll.setWidget(card_container)
+        layout=QVBoxLayout(card_container)
+        layout.setSpacing(16)
+        # Image label
+        self.image_label=QLabel("Uploaded image will be shown here 🖼️")
+        self.image_label.setFixedHeight(240)
         self.image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.image_label.setStyleSheet("border:2px solid #888; border-radius:10px; background-color:white;")
-        layout.addWidget(self.image_label, alignment=Qt.AlignmentFlag.AlignCenter)
+        self.image_label.setStyleSheet("border:2px dashed #d1d5db;border-radius:12px;color:#9ca3af;")
+        btns=QHBoxLayout()
+        upload=QPushButton("Upload Image 🗃️")
+        upload.clicked.connect(self.upload_image)
+        camera=QPushButton("Take Photo 📸")
+        camera.setObjectName("Secondary")
+        camera.clicked.connect(self.take_photo_mock)
+        btns.addWidget(upload)
+        btns.addWidget(camera)
+        self.issue_type=QComboBox()
+        self.issue_type.addItems(["Pothole","Leakage","Road Damage","Garbage","Streetlight"])
+        self.issue_type.setFixedHeight(36)
+        self.location=QLineEdit()
+        self.location.setPlaceholderText("Location 📍")
+        auto=QPushButton("Auto Detect 📡")
+        auto.setObjectName("Secondary")
+        auto.clicked.connect(self.auto_detect_location)
+        loc=QHBoxLayout()
+        loc.addWidget(self.location)
+        loc.addWidget(auto)
+        self.text=QTextEdit()
+        self.text.setPlaceholderText("Describe the issue (optional)")
+        self.text.setFixedHeight(90)
+        send=QPushButton("Submit Report 📤")
+        send.clicked.connect(self.send_report)
+        layout.addWidget(self.image_label)
+        layout.addLayout(btns)
+        layout.addWidget(self.issue_type)
+        layout.addLayout(loc)
+        layout.addWidget(self.text)
+        layout.addWidget(send,alignment=Qt.AlignmentFlag.AlignRight)
+        report_layout=QVBoxLayout(self.report_tab)
+        report_layout.addWidget(scroll)
 
-        # Buttons: Upload / Take Photo
-        button_layout = QHBoxLayout()
-        self.upload_btn = QPushButton("📷 Upload Image")
-        self.upload_btn.clicked.connect(self.upload_image)
-        self.camera_btn = QPushButton("📸 Take Photo")
-        self.camera_btn.clicked.connect(self.take_photo_mock)
-        for btn in [self.upload_btn, self.camera_btn]:
-            btn.setStyleSheet("""
-                QPushButton {
-                    background-color: #4CAF50;
-                    color: white;
-                    font-size:16px;
-                    padding:10px;
-                    border-radius:8px;
-                }
-            """)
-        button_layout.addWidget(self.upload_btn)
-        button_layout.addWidget(self.camera_btn)
-        layout.addLayout(button_layout)
-
-        # Location Input
-        loc_layout = QHBoxLayout()
-        self.location_input = QLineEdit()
-        self.location_input.setPlaceholderText("Enter location manually")
-        self.location_input.setFixedHeight(30)
-        self.auto_btn = QPushButton("Auto Detect")
-        self.auto_btn.clicked.connect(self.auto_detect_location)
-        self.auto_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #FF9800;
-                color: white;
-                font-size:14px;
-                padding:6px;
-                border-radius:6px;
-            }
-        """)
-        loc_layout.addWidget(self.location_input)
-        loc_layout.addWidget(self.auto_btn)
-        layout.addLayout(loc_layout)
-
-        # Optional Text / Complaint
-        self.text_edit = QTextEdit()
-        self.text_edit.setPlaceholderText("Optional: Add a description or complaint...")
-        self.text_edit.setFixedHeight(80)
-        layout.addWidget(self.text_edit)
-
-        # Send Button
-        self.send_btn = QPushButton("🚀 Send Report")
-        self.send_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #2196F3;
-                color:white;
-                font-size:16px;
-                padding:12px;
-                border-radius:8px;
-            }
-        """)
-        self.send_btn.clicked.connect(self.send_report)
-        layout.addWidget(self.send_btn, alignment=Qt.AlignmentFlag.AlignCenter)
-
-        self.report_tab.setLayout(layout)
-
-    # ====== History Tab ======
+    # ================= History =================
     def setup_history_tab(self):
-        layout = QVBoxLayout()
-        self.history_list = QListWidget()
-        layout.addWidget(self.history_list)
-        self.history_tab.setLayout(layout)
+        scroll=QScrollArea()
+        scroll.setWidgetResizable(True)
+        container=QWidget()
+        scroll.setWidget(container)
+        self.history_layout=QVBoxLayout(container)
+        self.counter_label=QLabel("")
+        self.counter_label.setStyleSheet("font-weight:600; font-size:14px;")
+        self.history_layout.addWidget(self.counter_label)
+        self.history_list=QListWidget()
+        self.history_layout.addWidget(self.history_list)
         self.refresh_history()
+        tab_layout=QVBoxLayout(self.history_tab)
+        tab_layout.addWidget(scroll)
 
-    # ====== Help Tab ======
+    # ================= Help =================
     def setup_help_tab(self):
-        layout = QVBoxLayout()
-        help_label = QLabel(
-            "How to use CityCare Demo:\n\n"
-            "1. Upload or take a photo of the issue.\n"
-            "2. Enter location manually or click 'Auto Detect'.\n"
-            "3. Optionally write a description/complaint.\n"
-            "4. Click 'Send Report' to register it.\n"
-            "5. Switch to 'History' tab to see your reports, status, and resolution date.\n"
-            "6. Once resolved, you can give feedback.\n"
-            "7. Status updates are simulated for demo purposes."
+        scroll=QScrollArea()
+        scroll.setWidgetResizable(True)
+        container=QWidget()
+        scroll.setWidget(container)
+        layout=QVBoxLayout(container)
+        help_text=QLabel(
+"Help – CityCare \n"
+ "\n"
+"📌 What is CityCare?\n"
+ "\n"
+"CityCare is a civic issue reporting platform that helps citizens report problems like \n"
+ "potholes, damaged roads, or other public issues quickly and transparently.\n"
+ "\n"      
+"📝 How to Report an Issue\n"
+ "\n"
+"1. Go to Report Issue\n"
+"2. Select the issue type (e.g., pothole)\n"
+"3. Enter the location\n"
+"4. Add a short description (optional)\n"
+"5. Upload or take a photo of the issue\n"
+"6. Submit the report\n"
+        "\n"     
+"Your report will be reviewed and tracked until it is resolved.\n"
+ "\n"
+"📷 Image Guidelines\n"
+ "\n"
+"1. Upload a clear image of the issue\n"
+"2. Make sure the problem is visible\n"
+"3. Avoid blurry or unrelated images\n"
+   "\n"          
+"Images help authorities understand and resolve issues faster.\n"
+ "\n"
+"🕒 Tracking Your Report\n"
+ "\n"
+"1. You can view all your submitted reports in the History section\n"
+"2. Each report shows its current status:\n"
+ "\n"
+"Pending\n"
+"In Progress\n"
+"Resolved\n"
+ "\n"
+"You’ll be notified once the issue is resolved.\n"
+ "\n"
+"⭐ Feedback & Ratings\n"
+ "\n"
+"After an issue is resolved, you’ll be asked to:\n"
+ "\n"
+"Rate the resolution (1–5)\n"
+"Share feedback (optional)\n"
+"Your feedback helps improve the service quality.\n"
+ "\n"
+"🎨 Theme & Personalization\n"
+ "\n"
+"CityCare supports multiple themes:\n"
+ "\n"
+"Cream White – Default Theme\n"
+ "\n"
+"Night Pink – Blush Mode Theme\n"
+ "\n"
+"Blue Panther – Midnight Theme\n"
+ "\n"
+"You can change themes anytime from Settings.\n"
+ "\n"
+"❓ Need More Help?\n"
+ "\n"
+"If you face any issues or have suggestions, please share feedback through the app.\n"
+ "\n"
+"Together, we can make cities better.\n"
+"\n"
         )
-        help_label.setWordWrap(True)
-        help_label.setFont(QFont('Arial', 12))
-        layout.addWidget(help_label)
-        self.help_tab.setLayout(layout)
+        help_text.setStyleSheet("color:#374151; font-size:14px;")
+        help_text.setWordWrap(True)
+        layout.addWidget(help_text)
+        tab_layout=QVBoxLayout(self.help_tab)
+        tab_layout.addWidget(scroll)
 
-    # ====== Upload / Camera Mock ======
+    # ================= Logic =================
     def upload_image(self):
-        file_name, _ = QFileDialog.getOpenFileName(self, "Select Image", "", "Image Files (*.png *.jpg *.jpeg)")
-        if file_name:
-            self.image_path = file_name
-            pixmap = QPixmap(file_name).scaled(self.image_label.width(), self.image_label.height(), Qt.AspectRatioMode.KeepAspectRatio)
-            self.image_label.setPixmap(pixmap)
-
+        file,_=QFileDialog.getOpenFileName(self,"Select Image","","Images (*.png *.jpg)")
+        if file:
+            self.image_path=file
+            pix=QPixmap(file).scaled(self.image_label.width(),self.image_label.height(),Qt.AspectRatioMode.KeepAspectRatio)
+            self.image_label.setPixmap(pix)
     def take_photo_mock(self):
-        self.image_path = None
-        self.image_label.setText("📸 Mock Camera Photo Taken")
-
-    # ====== Auto Detect Location (Demo) ======
+        self.image_label.setText("Mock photo captured")
+        self.image_path="mock"
     def auto_detect_location(self):
-        self.location_input.setText("Auto location detected (Demo)")
+        self.location.setText("Auto detected location")
 
-    # ====== Send Report ======
+    # ================= Send Report =================
     def send_report(self):
-        if not self.image_path and not self.text_edit.toPlainText():
-            QMessageBox.warning(self, "Error", "Please upload/take a photo or enter a complaint.")
+        if not self.image_path and not self.text.toPlainText():
+            QMessageBox.warning(self,"Error","Add image or description")
             return
-        location = self.location_input.text() if self.location_input.text().strip() else "Location not provided"
-
-        # Mock issue detection
-        issue_types = ["Pothole", "Garbage", "Water Leak", "Broken Streetlight"]
-        issue = random.choice(issue_types)
-        text = self.text_edit.toPlainText()
-        now = datetime.now()
-        report_date = now.strftime("%Y-%m-%d %H:%M")
-
-        # Add to history
-        report = {
-            "issue": issue,
-            "text": text,
-            "status": "Sent",
-            "report_date": report_date,
-            "resolved_date": None,
-            "feedback": "",
-            "location": location
-        }
+        issue=self.issue_type.currentText()
+        now=datetime.now().strftime("%Y-%m-%d %H:%M")
+        report={"issue":issue,"text":self.text.toPlainText(),"status":"Sent",
+                "date":now,"location":self.location.text() or "Not provided","image":self.image_path}
         history.append(report)
         self.refresh_history()
-
-        # Show “Email Sent” message
-        QMessageBox.information(self, "Demo", f"📧 Report Sent!\nIssue: {issue}\nReported on: {report_date}\nLocation: {location}")
-
-        # Clear inputs
-        self.text_edit.clear()
+        QMessageBox.information(self,"Submitted","Report submitted successfully")
+        self.text.clear()
+        self.location.clear()
         self.image_label.setText("No image selected")
-        self.image_path = None
-        self.location_input.clear()
+        # Demo timeline: resolve after 20 sec
+        QTimer.singleShot(20000, lambda r=report:self.auto_resolve(r))
 
-        # Simulate status updates
-        QTimer.singleShot(7000, lambda: self.update_status(report, "Opened"))
-        QTimer.singleShot(15000, lambda: self.update_status(report, "Resolved"))
+    # ================= Auto Resolve & Feedback =================
+    def auto_resolve(self,report):
+        report["status"]="Resolved"
+        self.refresh_history()
+        dlg=QDialog(self)
+        dlg.setWindowTitle("Feedback for your report")
+        layout=QVBoxLayout(dlg)
+        lbl=QLabel(f"Your report '{report['issue']}' has been resolved!\nPlease provide feedback:")
+        layout.addWidget(lbl)
+        feedback_text=QTextEdit()
+        feedback_text.setPlaceholderText("Type your feedback here...")
+        layout.addWidget(feedback_text)
+        rating_box=QComboBox()
+        rating_box.addItems([str(i) for i in range(1,6)])
+        layout.addWidget(QLabel("Rating (1-5):"))
+        layout.addWidget(rating_box)
+        submit_btn=QPushButton("Submit Feedback")
+        submit_btn.clicked.connect(lambda: (dlg.close(), QMessageBox.information(self,"Thanks","Feedback submitted!")))
+        layout.addWidget(submit_btn)
+        dlg.exec()
 
-    # ====== History Management ======
+    # ================= Refresh History =================
     def refresh_history(self):
         self.history_list.clear()
-        for rep in history:
-            status_text = rep["status"]
-            report_date = rep["report_date"]
-            resolved_date = rep["resolved_date"]
-            feedback = rep["feedback"]
-            location = rep["location"]
+        submitted=len(history)
+        resolved=sum(1 for r in history if r["status"]=="Resolved")
+        self.counter_label.setText(f"Submitted: {submitted} | Resolved: {resolved}")
+        if not history:
+            placeholder=QListWidgetItem("No reports yet.\nSubmit a report to see history here.")
+            placeholder.setFlags(Qt.ItemFlag.NoItemFlags)
+            self.history_list.addItem(placeholder)
+        else:
+            for idx,r in enumerate(history):
+                item=QListWidgetItem(f"{r['issue']} • {r['status']}\n{r['date']} • {r['location']}")
+                self.history_list.addItem(item)
+                # Add view report on double click
+                self.history_list.itemDoubleClicked.connect(self.view_report)
 
-            if status_text == "Resolved":
-                display = (f"✅ {rep['issue']}: {rep['text']}\n"
-                           f"Reported: {report_date}\nResolved: {resolved_date}\n"
-                           f"Location: {location}")
-                if feedback:
-                    display += f"\nFeedback: {feedback}"
-            else:
-                display = (f"{status_text} - {rep['issue']}: {rep['text']}\n"
-                           f"Reported: {report_date}\nLocation: {location}")
+    def view_report(self,item):
+        idx=self.history_list.row(item)
+        r=history[idx]
+        dlg=QDialog(self)
+        dlg.setWindowTitle("View Report")
+        layout=QVBoxLayout(dlg)
+        lbl=QLabel(f"Issue: {r['issue']}\nStatus: {r['status']}\nDate: {r['date']}\nLocation: {r['location']}\nDescription: {r['text']}")
+        lbl.setWordWrap(True)
+        layout.addWidget(lbl)
+        if r["image"] and r["image"]!="mock":
+            pix=QPixmap(r["image"]).scaled(400,300,Qt.AspectRatioMode.KeepAspectRatio)
+            img_lbl=QLabel()
+            img_lbl.setPixmap(pix)
+            layout.addWidget(img_lbl)
+        elif r["image"]=="mock":
+            img_lbl=QLabel("Mock photo")
+            layout.addWidget(img_lbl)
+        dlg.exec()
 
-            item = QListWidgetItem(display)
-            self.history_list.addItem(item)
-
-    def update_status(self, report, new_status):
-        report["status"] = new_status
-        if new_status == "Resolved":
-            now = datetime.now()
-            report["resolved_date"] = now.strftime("%Y-%m-%d %H:%M")
-            # Ask for feedback
-            text, ok = QInputDialog.getText(self, "Feedback", f"Issue '{report['issue']}' resolved! Provide feedback (optional):")
-            if ok and text.strip():
-                report["feedback"] = text.strip()
-        self.refresh_history()
-
-# ====== Run App ======
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    splash = SplashScreen()
+# ================= Run =================
+if __name__=="__main__":
+    app=QApplication(sys.argv)
+    splash=SplashScreen()
     splash.show()
     sys.exit(app.exec())
