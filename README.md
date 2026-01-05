@@ -123,8 +123,8 @@ It is not connected to any real municipal authority and should not be used for o
 📸 Screenshots
 
 
-![CITYCARE UI](citycare-loginpng)
-![CITYCARE INTRO](citycare.png)
+![CITYCARE UI](CityCare-main.ui.png)
+![CITYCARE Theme](Theme1-ui.png)
 
 
 ---
