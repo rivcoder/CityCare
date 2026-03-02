@@ -380,9 +380,25 @@ class CityCare(QWidget):
         title.setStyleSheet("font-size:24px; font-weight:700;")
         layout.addWidget(title)
 
-        info = QLabel("Use the Report tab to submit issues.\nAuthorities manage them from History.")
+        info = QLabel(
+            "Use the Report tab to submit issues.<br>"
+            "Authorities manage them from History.<br><br>"
+
+            "<b>Steps to Report:</b><br><br>"
+            "1. Upload a clear image.<br>"
+            "2. Select issue type.<br>"
+            "3. Enter or auto-detect location.<br>"
+            "4. Add description (optional).<br>"
+            "5. Submit and track in History.<br><br>"
+
+            "<b>Guidelines:</b><br>"
+            "• Provide accurate location.<br>"
+            "• Avoid duplicate reports.<br>"
+            "• Emergency issues should be reported directly to authorities."
+        )
+
         info.setWordWrap(True)
-        info.setStyleSheet("color:#94a3b8;")
+        info.setTextFormat(Qt.TextFormat.RichText)
         layout.addWidget(info)
 
     def upload_image(self):
